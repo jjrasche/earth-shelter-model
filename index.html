@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Earth Shelter Burial Calculator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      overflow: hidden;
+    }
+    #app {
+      display: flex;
+      height: 100vh;
+    }
+    #controls {
+      width: 320px;
+      padding: 16px;
+      background: #16213e;
+      overflow-y: auto;
+      border-right: 1px solid #0f3460;
+    }
+    #canvas-container {
+      flex: 1;
+      position: relative;
+    }
+    canvas { display: block; }
+
+    h1 { font-size: 18px; margin-bottom: 16px; color: #e94560; }
+    h2 { font-size: 14px; margin: 16px 0 8px; color: #0f3460; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+
+    .control-group { margin-bottom: 12px; }
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .control-group label span { color: #e94560; font-weight: bold; }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #e94560;
+    }
+
+    #outputs {
+      background: #0f3460;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 16px;
+    }
+    #outputs h2 { margin-top: 0; border: none; }
+    .output-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid #16213e;
+    }
+    .output-row:last-child { border: none; }
+    .output-row .value { color: #e94560; font-weight: bold; }
+    .output-row .value.positive { color: #4ade80; }
+    .output-row .value.negative { color: #f87171; }
+
+    #view-controls {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: flex;
+      gap: 8px;
+    }
+    #view-controls button {
+      padding: 8px 16px;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      color: #eee;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    #view-controls button:hover { background: #0f3460; }
+    #view-controls button.active { background: #e94560; border-color: #e94560; }
+
+    #info {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      font-size: 11px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="controls">
+      <h1>Earth Shelter Calculator</h1>
+
+      <h2>Hillside</h2>
+      <div class="control-group">
+        <label>Slope Angle <span id="slope-angle-val">20°</span></label>
+        <input type="range" id="slope-angle" min="5" max="45" value="20" step="1">
+      </div>
+
+      <h2>Structure</h2>
+      <div class="control-group">
+        <label>Width <span id="structure-width-val">10 ft</span></label>
+        <input type="range" id="structure-width" min="8" max="30" value="10" step="1">
+      </div>
+      <div class="control-group">
+        <label>Depth <span id="structure-depth-val">10 ft</span></label>
+        <input type="range" id="structure-depth" min="8" max="30" value="10" step="1">
+      </div>
+      <div class="control-group">
+        <label>Height <span id="structure-height-val">10 ft</span></label>
+        <input type="range" id="structure-height" min="8" max="15" value="10" step="1">
+      </div>
+
+      <h2>Position</h2>
+      <div class="control-group">
+        <label>Setback <span id="setback-val">0 ft</span></label>
+        <input type="range" id="setback" min="0" max="30" value="0" step="0.5">
+      </div>
+
+      <h2>Berm</h2>
+      <div class="control-group">
+        <label>Min Cover <span id="min-cover-val">4 ft</span></label>
+        <input type="range" id="min-cover" min="2" max="8" value="4" step="0.5">
+      </div>
+      <div class="control-group">
+        <label>Overhang <span id="overhang-val">3 ft</span></label>
+        <input type="range" id="overhang" min="1" max="10" value="3" step="0.5">
+      </div>
+      <div class="control-group">
+        <label>Cap Slope <span id="cap-slope-val">2°</span></label>
+        <input type="range" id="cap-slope" min="0.5" max="3" value="2" step="0.5">
+      </div>
+      <div class="control-group">
+        <label>Side Slope <span id="side-slope-val">30°</span></label>
+        <input type="range" id="side-slope" min="20" max="45" value="30" step="1">
+      </div>
+
+      <h2>Walkout</h2>
+      <div class="control-group">
+        <label>Walkout Slope <span id="walkout-slope-val">2°</span></label>
+        <input type="range" id="walkout-slope" min="0.5" max="3" value="2" step="0.5">
+      </div>
+
+      <div id="outputs">
+        <h2>Calculated Values</h2>
+        <div class="output-row">
+          <span>Effective Burial</span>
+          <span class="value" id="out-burial">0.0 ft</span>
+        </div>
+        <div class="output-row">
+          <span>Walkout Distance</span>
+          <span class="value" id="out-walkout-dist">0.0 ft</span>
+        </div>
+        <div class="output-row">
+          <span>Walkout Width</span>
+          <span class="value" id="out-walkout-width">0.0 ft</span>
+        </div>
+        <div class="output-row">
+          <span>Cut Volume</span>
+          <span class="value" id="out-cut">0.0 yd³</span>
+        </div>
+        <div class="output-row">
+          <span>Fill Volume</span>
+          <span class="value" id="out-fill">0.0 yd³</span>
+        </div>
+        <div class="output-row">
+          <span>Earth Balance</span>
+          <span class="value" id="out-balance">0.0 yd³</span>
+        </div>
+      </div>
+    </div>
+    <div id="canvas-container">
+      <div id="view-controls">
+        <button id="view-iso" class="active">Isometric</button>
+        <button id="view-section">Section</button>
+        <button id="view-plan">Plan</button>
+      </div>
+      <div id="info">Drag to rotate • Scroll to zoom</div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
