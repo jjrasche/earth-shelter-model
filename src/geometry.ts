@@ -397,11 +397,12 @@ export function createBackSlopeMesh(p: Params, _outputs: CalculatedOutputs): THR
 
     // Convergence point (where this X column meets grade)
     const convergence_y = cap_z / Math.tan(slope_rad);
+    const convergence_z = convergence_y * Math.tan(slope_rad);  // grade height at convergence
 
     // Only add if convergence is behind cap back
     if (convergence_y > cap_back_y) {
       vertices.push(x, cap_back_y, cap_z);
-      vertices.push(x, convergence_y, cap_z);
+      vertices.push(x, convergence_y, convergence_z);  // descends to meet grade
     }
   }
 
@@ -445,26 +446,19 @@ export function createWalkoutMesh(p: Params, outputs: CalculatedOutputs): THREE.
   const floor_z_front = -p.structure_height;
   const floor_z_end = floor_z_front - outputs.walkout_distance * Math.tan(walkout_slope_rad);
 
-  // Walkout width narrows as we go downhill (side slopes converge)
-  const half_width_front = outputs.walkout_width / 2;
+  // Walkout is a rectangle - constant width from front to end
+  // Width matches berm footprint at front (structure + overhang + side_run)
+  const half_width = outputs.walkout_width / 2;
 
-  // At end, grade is lower so side run is smaller
-  const grade_at_end = end_y * Math.tan(slope_rad);
-  const cap_clearance_end = p.min_cover - grade_at_end;
-  const side_run_end = cap_clearance_end > 0
-    ? cap_clearance_end / Math.tan(degToRad(p.side_slope))
-    : 0;
-  const half_width_end = p.structure_width / 2 + p.overhang + side_run_end;
-
-  // Floor
+  // Floor - rectangle, not trapezoid
   const floorGeo = new THREE.BufferGeometry();
   const floorVerts = new Float32Array([
-    -half_width_front, front_y, floor_z_front,
-    half_width_front, front_y, floor_z_front,
-    half_width_end, end_y, floor_z_end,
-    -half_width_front, front_y, floor_z_front,
-    half_width_end, end_y, floor_z_end,
-    -half_width_end, end_y, floor_z_end,
+    -half_width, front_y, floor_z_front,
+    half_width, front_y, floor_z_front,
+    half_width, end_y, floor_z_end,
+    -half_width, front_y, floor_z_front,
+    half_width, end_y, floor_z_end,
+    -half_width, end_y, floor_z_end,
   ]);
   floorGeo.setAttribute('position', new THREE.BufferAttribute(floorVerts, 3));
   floorGeo.computeVertexNormals();
@@ -475,20 +469,20 @@ export function createWalkoutMesh(p: Params, outputs: CalculatedOutputs): THREE.
   });
   group.add(new THREE.Mesh(floorGeo, floorMat));
 
-  // Side walls (cut faces)
+  // Side walls (vertical cut faces, constant X position)
   const createSideWall = (sign: number) => {
-    const hw_front = sign * half_width_front;
-    const hw_end = sign * half_width_end;
+    const hw = sign * half_width;
     const grade_front = front_y * Math.tan(slope_rad);
     const grade_end = end_y * Math.tan(slope_rad);
 
+    // Vertical wall from floor to grade, parallel sides
     const verts = new Float32Array([
-      hw_front, front_y, floor_z_front,
-      hw_front, front_y, grade_front,
-      hw_end, end_y, grade_end,
-      hw_front, front_y, floor_z_front,
-      hw_end, end_y, grade_end,
-      hw_end, end_y, floor_z_end,
+      hw, front_y, floor_z_front,
+      hw, front_y, grade_front,
+      hw, end_y, grade_end,
+      hw, front_y, floor_z_front,
+      hw, end_y, grade_end,
+      hw, end_y, floor_z_end,
     ]);
 
     const geo = new THREE.BufferGeometry();
